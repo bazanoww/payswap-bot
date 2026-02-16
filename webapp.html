@@ -189,9 +189,10 @@
     tg.showScanQrPopup({
         text: 'Наведите камеру на QR-код оплаты'
     }, (qrData) => {
-        if (!qrData) return;
+        if (!qrData) return;  // если закрыли без сканирования
+        
+        // Вызываем обработку
         processQR(qrData);
-        return true;
     });
 });
                 
