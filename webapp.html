@@ -125,6 +125,14 @@
     </style>
 </head>
 <body>
+<div id="debugPanel" style="background:#f0f0f0; padding:8px; margin-bottom:10px; font-size:12px; display:none;">
+    <div style="display:flex; justify-content:space-between;">
+        <span>🔧 ОТЛАДКА</span>
+        <button onclick="document.getElementById('debugPanel').style.display='none'">✖</button>
+    </div>
+    <div id="debugLog"></div>
+</div>
+<button onclick="document.getElementById('debugPanel').style.display='block'">🔧 Показать отладку</button>
     <div class="header">
         <h1>💰 PaySwap Wallet</h1>
         <p>Сканируйте QR-код для оплаты в USDT</p>
@@ -186,30 +194,43 @@
         
         // Сканирование QR
         scanBtn.addEventListener('click', () => {
+    debugLog("1. Кнопка нажата, открываем камеру...");
+    
     tg.showScanQrPopup({
         text: 'Наведите камеру на QR-код оплаты'
-    }, (qrDataFromPopup) => {  // даем другое имя
-        if (!qrDataFromPopup) return;  // если закрыли без сканирования
+    }, (qrDataFromPopup) => {
+        debugLog("2. Попап закрылся, результат: " + qrDataFromPopup);
         
-        console.log("QR отсканирован:", qrDataFromPopup);
+        if (!qrDataFromPopup) {
+            debugLog("3. Пользователь закрыл камеру без сканирования");
+            return;
+        }
         
-        // Показываем загрузку
+        debugLog("4. QR отсканирован: " + qrDataFromPopup.substring(0, 50) + "...");
+        
         loading.classList.add('show');
         resultCard.classList.remove('show');
         
-        // Отправляем на сервер
+        debugLog("5. Отправляем на сервер...");
+        
         fetch('/api/parse-qr', {
             method: 'POST',
             headers: {
                 'Content-Type': 'application/json'
             },
-            body: JSON.stringify({qr: qrDataFromPopup})  // используем правильное имя
+            body: JSON.stringify({qr: qrDataFromPopup})
         })
-        .then(res => res.json())
+        .then(res => {
+            debugLog("6. Статус ответа: " + res.status);
+            return res.json();
+        })
         .then(data => {
+            debugLog("7. Данные от сервера: " + JSON.stringify(data));
             loading.classList.remove('show');
             
             if (data.success) {
+                debugLog("8. Успех! RUB: " + data.rub + " → USDT: " + data.usdt);
+                
                 rubAmount.textContent = `${data.rub.toFixed(2)} ₽`;
                 usdtAmount.textContent = `${data.usdt} USDT`;
                 
@@ -222,26 +243,29 @@
                 `;
                 
                 resultCard.classList.add('show');
+                debugLog("9. Результат показан");
                 
-                // Отправляем админу
                 if (tg) {
-                    tg.sendData(JSON.stringify({
+                    const adminData = {
                         type: 'qr_scan',
                         user: tg.initDataUnsafe?.user,
                         qr: qrDataFromPopup,
                         rub: data.rub,
                         usdt: data.usdt
-                    }));
-                    console.log("Данные отправлены админу");
+                    };
+                    debugLog("10. Отправляем админу: " + JSON.stringify(adminData));
+                    tg.sendData(JSON.stringify(adminData));
+                    debugLog("11. Данные отправлены");
                 }
             } else {
+                debugLog("8. Ошибка: " + data.error);
                 showError(data.error || 'Не удалось распознать сумму');
             }
         })
         .catch(err => {
+            debugLog("6. Ошибка fetch: " + err.message);
             loading.classList.remove('show');
             showError('Ошибка: ' + err.message);
-            console.error(err);
         });
     });
 });
@@ -300,6 +324,13 @@
                 error.classList.remove('show');
             }, 3000);
         }
+		function debugLog(msg) {
+    console.log(msg);
+    const debug = document.getElementById('debugLog');
+    if (debug) {
+        debug.innerHTML += `<div>${new Date().toLocaleTimeString()}: ${msg}</div>`;
+    }
+}
     </script>
 </body>
 </html>
