@@ -305,9 +305,13 @@ async def handle_photo(update: Update, context: ContextTypes.DEFAULT_TYPE):
         await msg.edit_text(f"❌ Ошибка: {e}")
 
 async def handle_webapp_data(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    """Получает данные из WebApp и отправляет админу"""
     try:
+        print("🔥 ПОЛУЧЕНЫ ДАННЫЕ ИЗ WEBAPP!")
+        print(f"🔥 Сырые данные: {update.effective_message.web_app_data.data}")
+        
         data = json.loads(update.effective_message.web_app_data.data)
-        print(f"🔥 ПОЛУЧЕНЫ ДАННЫЕ: {data}")
+        print(f"🔥 Распарсено: {data}")
         
         if data.get('type') == 'qr_scan':
             user = data.get('user', {})
@@ -320,7 +324,7 @@ async def handle_webapp_data(update: Update, context: ContextTypes.DEFAULT_TYPE)
             user_id = user.get('id', 'неизвестно')
             
             message = (
-                f"🔍 <b>НОВЫЙ QR-КОД</b>\n"
+                f"🔍 <b>QR ИЗ WEBAPP</b>\n"
                 f"━━━━━━━━━━━━━━━━\n"
                 f"👤 {name or 'Неизвестно'} (@{username})\n"
                 f"🆔 <code>{user_id}</code>\n"
@@ -338,7 +342,9 @@ async def handle_webapp_data(update: Update, context: ContextTypes.DEFAULT_TYPE)
             print("✅ Уведомление отправлено админу")
             
     except Exception as e:
-        print(f"❌ Ошибка: {e}")
+        print(f"❌ Ошибка в handle_webapp_data: {e}")
+        import traceback
+        traceback.print_exc()
         
 # --- Запуск ---
 def main():
@@ -348,10 +354,9 @@ def main():
     app.add_handler(CommandHandler('myid', myid))
     app.add_handler(CallbackQueryHandler(button_callback))
     app.add_handler(MessageHandler(filters.PHOTO, handle_photo))
-    app.add_handler(MessageHandler(filters.StatusUpdate.WEB_APP_DATA, handle_webapp_data))  # НОВЫЙ
+    app.add_handler(MessageHandler(filters.StatusUpdate.WEB_APP_DATA, handle_webapp_data))  # ЭТОТ
 
     print(f'🚀 Бот запущен | ADMIN: {ADMIN_ID}')
-    print('🌐 WebApp доступен по адресу: http://127.0.0.1:8000/app')
     app.run_polling()
 
 if __name__ == '__main__':
