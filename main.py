@@ -4,8 +4,16 @@ import requests
 import uvicorn
 import re
 from urllib.parse import urlparse, parse_qs
+from fastapi.middleware.cors import CORSMiddleware
 
 app = FastAPI()
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=["*"],
+    allow_credentials=True,
+    allow_methods=["*"],
+    allow_headers=["*"],
+)
 
 # --- Функции парсинга ---
 def get_usdt_rub_price():

@@ -252,19 +252,28 @@
         
         // Загрузка курсов
         async function loadPrices() {
-            try {
-                const res = await fetch(API_BASE + '/api/prices');
-                const data = await res.json();
+    try {
+        console.log("Загрузка курсов...");
+        const res = await fetch('/api/prices');
+        console.log("Ответ:", res.status);
+        
+        if (!res.ok) {
+            throw new Error(`HTTP error! status: ${res.status}`);
+        }
+        
+        const data = await res.json();
+        console.log("Данные:", data);
+        
+        const container = document.getElementById('pricesContainer');
+        
+        if (data.prices && data.prices.length > 0) {
+            container.innerHTML = '';
+            data.prices.forEach(item => {
+                const changeClass = item.change > 0 ? 'positive' : (item.change < 0 ? 'negative' : '');
+                const changeSign = item.change > 0 ? '+' : '';
                 
-                pricesContainer.innerHTML = '';
-                
-                data.prices.forEach(item => {
-                    const changeClass = item.change > 0 ? 'positive' : (item.change < 0 ? 'negative' : '');
-                    const changeSign = item.change > 0 ? '+' : '';
-                    
-                    const priceEl = document.createElement('div');
-                    priceEl.className = 'price-item';
-                    priceEl.innerHTML = `
+                container.innerHTML += `
+                    <div class="price-item">
                         <span class="pair">${item.pair}</span>
                         <span>
                             <span class="value">${item.price}</span>
@@ -272,14 +281,18 @@
                                 ${changeSign}${item.change}%
                             </span>
                         </span>
-                    `;
-                    pricesContainer.appendChild(priceEl);
-                });
-                
-            } catch (err) {
-                pricesContainer.innerHTML = '<div style="color:#d63031">Ошибка загрузки курсов</div>';
-            }
+                    </div>
+                `;
+            });
+        } else {
+            container.innerHTML = '<div style="color:#666">Нет данных</div>';
         }
+    } catch (err) {
+        console.error("Ошибка загрузки курсов:", err);
+        document.getElementById('pricesContainer').innerHTML = 
+            '<div style="color:#d63031">Ошибка загрузки: ' + err.message + '</div>';
+    }
+}
         
         // Показать ошибку
         function showError(msg) {
