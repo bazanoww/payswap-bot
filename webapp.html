@@ -203,7 +203,7 @@
                         'Content-Type': 'application/json'
                     },
                     body: JSON.stringify({qr: qrData})
-                })
+                }
                 .then(res => res.json())
                 .then(data => {
                     loading.classList.remove('show');
