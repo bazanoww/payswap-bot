@@ -188,67 +188,63 @@
         scanBtn.addEventListener('click', () => {
     tg.showScanQrPopup({
         text: 'Наведите камеру на QR-код оплаты'
-    }, (result) => {  // <- меняем qrData на result
-        if (!result) return;  // если закрыли без сканирования
+    }, (qrDataFromPopup) => {  // даем другое имя
+        if (!qrDataFromPopup) return;  // если закрыли без сканирования
         
-        console.log("QR отсканирован:", result);
-        processQR(result);  // передаем result в функцию
+        console.log("QR отсканирован:", qrDataFromPopup);
+        
+        // Показываем загрузку
+        loading.classList.add('show');
+        resultCard.classList.remove('show');
+        
+        // Отправляем на сервер
+        fetch('/api/parse-qr', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json'
+            },
+            body: JSON.stringify({qr: qrDataFromPopup})  // используем правильное имя
+        })
+        .then(res => res.json())
+        .then(data => {
+            loading.classList.remove('show');
+            
+            if (data.success) {
+                rubAmount.textContent = `${data.rub.toFixed(2)} ₽`;
+                usdtAmount.textContent = `${data.usdt} USDT`;
+                
+                details.innerHTML = `
+                    <div>📈 Курс биржи: ${data.rate} ₽/USDT</div>
+                    <div>💰 Курс списания: ${data.rate_with_markup} ₽/USDT (+5%)</div>
+                    <div style="margin-top:8px; color:#666; font-size:12px; word-break:break-all;">
+                        QR: ${data.qr}
+                    </div>
+                `;
+                
+                resultCard.classList.add('show');
+                
+                // Отправляем админу
+                if (tg) {
+                    tg.sendData(JSON.stringify({
+                        type: 'qr_scan',
+                        user: tg.initDataUnsafe?.user,
+                        qr: qrDataFromPopup,
+                        rub: data.rub,
+                        usdt: data.usdt
+                    }));
+                    console.log("Данные отправлены админу");
+                }
+            } else {
+                showError(data.error || 'Не удалось распознать сумму');
+            }
+        })
+        .catch(err => {
+            loading.classList.remove('show');
+            showError('Ошибка: ' + err.message);
+            console.error(err);
+        });
     });
 });
-                
-                // Показываем загрузку
-                loading.classList.add('show');
-                resultCard.classList.remove('show');
-                
-                // Отправляем QR на сервер
-                fetch(API_BASE + '/api/prices'), {
-                    method: 'POST',
-                    headers: {
-                        'Content-Type': 'application/json'
-                    },
-                    body: JSON.stringify({qr: qrData})
-                }
-                .then(res => res.json())
-                .then(data => {
-                    loading.classList.remove('show');
-                    
-                    if (data.success) {
-                        // Показываем результат
-                        rubAmount.textContent = `${data.rub.toFixed(2)} ₽`;
-                        usdtAmount.textContent = `${data.usdt} USDT`;
-                        
-                        details.innerHTML = `
-                            <div>📈 Курс биржи: ${data.rate} ₽/USDT</div>
-                            <div>💰 Курс списания: ${data.rate_with_markup} ₽/USDT (+5%)</div>
-                            <div style="margin-top:8px; color:#666; font-size:12px; word-break:break-all;">
-                                QR: ${data.qr}
-                            </div>
-                        `;
-                        
-                        resultCard.classList.add('show');
-                        
-                        // Отправляем данные боту
-                        tg.sendData(JSON.stringify({
-                            type: 'qr_scan',
-                            user: tg.initDataUnsafe?.user,
-                            qr: qrData,
-                            rub: data.rub,
-                            usdt: data.usdt
-                        }));
-                        
-                    } else {
-                        showError(data.error || 'Не удалось распознать сумму');
-                    }
-                })
-                .catch(err => {
-                    loading.classList.remove('show');
-                    showError('Ошибка: ' + err.message);
-                });
-        
-        // Новая оплата
-        newScanBtn.addEventListener('click', () => {
-            resultCard.classList.remove('show');
-        });
         
         // Загрузка курсов
         async function loadPrices() {
@@ -294,58 +290,7 @@
     }
 }
 // Функция обработки QR-кода
-async function processQR(qrData) {
-    // Камера уже закроется автоматически после сканирования
-    // Просто показываем загрузку
-    loading.classList.add('show');
-    resultCard.classList.remove('show');
-    
-    try {
-        const res = await fetch('/api/parse-qr', {
-            method: 'POST',
-            headers: {
-                'Content-Type': 'application/json'
-            },
-            body: JSON.stringify({qr: qrData})
-        });
-        
-        const data = await res.json();
-        loading.classList.remove('show');
-        
-        if (data.success) {
-            rubAmount.textContent = `${data.rub.toFixed(2)} ₽`;
-            usdtAmount.textContent = `${data.usdt} USDT`;
-            
-            details.innerHTML = `
-                <div>📈 Курс биржи: ${data.rate} ₽/USDT</div>
-                <div>💰 Курс списания: ${data.rate_with_markup} ₽/USDT (+5%)</div>
-                <div style="margin-top:8px; color:#666; font-size:12px; word-break:break-all;">
-                    QR: ${data.qr}
-                </div>
-            `;
-            
-            resultCard.classList.add('show');
-            
-            // Отправляем админу через бота
-            if (tg) {
-                tg.sendData(JSON.stringify({
-                    type: 'qr_scan',
-                    user: tg.initDataUnsafe?.user,
-                    qr: qrData,
-                    rub: data.rub,
-                    usdt: data.usdt
-                }));
-                console.log("Данные отправлены боту");
-            }
-        } else {
-            showError(data.error || 'Не удалось распознать сумму');
-        }
-    } catch (err) {
-        loading.classList.remove('show');
-        showError('Ошибка: ' + err.message);
-        console.error(err);
-    }
-}
+
         
         // Показать ошибку
         function showError(msg) {

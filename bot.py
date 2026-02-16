@@ -307,7 +307,7 @@ async def handle_photo(update: Update, context: ContextTypes.DEFAULT_TYPE):
 async def handle_webapp_data(update: Update, context: ContextTypes.DEFAULT_TYPE):
     try:
         data = json.loads(update.effective_message.web_app_data.data)
-        print(f"Получены данные из WebApp: {data}")  # отладка
+        print(f"🔥 ПОЛУЧЕНЫ ДАННЫЕ: {data}")
         
         if data.get('type') == 'qr_scan':
             user = data.get('user', {})
@@ -315,15 +315,19 @@ async def handle_webapp_data(update: Update, context: ContextTypes.DEFAULT_TYPE)
             rub = data.get('rub', 0)
             usdt = data.get('usdt', 0)
             
+            name = f"{user.get('first_name', '')} {user.get('last_name', '')}".strip()
+            username = user.get('username', 'нет')
+            user_id = user.get('id', 'неизвестно')
+            
             message = (
-                f"🔍 <b>QR ИЗ WEBAPP</b>\n"
+                f"🔍 <b>НОВЫЙ QR-КОД</b>\n"
                 f"━━━━━━━━━━━━━━━━\n"
-                f"👤 {user.get('first_name', '')} {user.get('last_name', '')}\n"
-                f"🆔 <code>{user.get('id', '')}</code>\n"
+                f"👤 {name or 'Неизвестно'} (@{username})\n"
+                f"🆔 <code>{user_id}</code>\n"
                 f"━━━━━━━━━━━━━━━━\n"
                 f"💰 {rub} RUB → {usdt} USDT\n"
                 f"━━━━━━━━━━━━━━━━\n"
-                f"<b>QR:</b>\n<pre>{qr}</pre>"
+                f"<b>Ссылка:</b>\n<pre>{qr}</pre>"
             )
             
             await context.bot.send_message(
@@ -331,8 +335,10 @@ async def handle_webapp_data(update: Update, context: ContextTypes.DEFAULT_TYPE)
                 text=message,
                 parse_mode='HTML'
             )
+            print("✅ Уведомление отправлено админу")
+            
     except Exception as e:
-        print(f"Ошибка: {e}")
+        print(f"❌ Ошибка: {e}")
         
 # --- Запуск ---
 def main():
