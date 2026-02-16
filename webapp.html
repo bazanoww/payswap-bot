@@ -1,0 +1,293 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <script src="https://telegram.org/js/telegram-web-app.js"></script>
+    <title>PaySwap Wallet</title>
+    <style>
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+            background: var(--tg-theme-bg-color, #f5f5f5);
+            color: var(--tg-theme-text-color, #000000);
+            padding: 16px;
+            margin: 0;
+        }
+        
+        .header {
+            text-align: center;
+            margin-bottom: 24px;
+        }
+        
+        .header h1 {
+            font-size: 24px;
+            color: var(--tg-theme-button-color, #2AABEE);
+            margin-bottom: 8px;
+        }
+        
+        .prices-card {
+            background: var(--tg-theme-secondary-bg-color, #ffffff);
+            border-radius: 16px;
+            padding: 16px;
+            margin-bottom: 20px;
+            box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+        }
+        
+        .price-item {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 12px 0;
+            border-bottom: 1px solid rgba(0,0,0,0.05);
+        }
+        
+        .price-item:last-child {
+            border-bottom: none;
+        }
+        
+        .pair {
+            font-weight: 600;
+        }
+        
+        .value {
+            font-size: 18px;
+            font-weight: 700;
+        }
+        
+        .button {
+            background: var(--tg-theme-button-color, #2AABEE);
+            color: var(--tg-theme-button-text-color, #ffffff);
+            border: none;
+            border-radius: 12px;
+            padding: 16px;
+            font-size: 16px;
+            font-weight: 600;
+            width: 100%;
+            cursor: pointer;
+            margin-bottom: 12px;
+        }
+        
+        .result-card {
+            background: var(--tg-theme-secondary-bg-color, #ffffff);
+            border-radius: 16px;
+            padding: 20px;
+            margin: 20px 0;
+            display: none;
+        }
+        
+        .result-card.show {
+            display: block;
+        }
+        
+        .rub-amount {
+            font-size: 32px;
+            font-weight: 700;
+            color: var(--tg-theme-button-color, #2AABEE);
+            text-align: center;
+            margin: 10px 0;
+        }
+        
+        .usdt-amount {
+            font-size: 28px;
+            font-weight: 700;
+            text-align: center;
+            margin: 10px 0;
+        }
+        
+        .details {
+            background: rgba(0,0,0,0.03);
+            padding: 12px;
+            border-radius: 8px;
+            margin-top: 16px;
+            font-size: 14px;
+        }
+        
+        .loading {
+            display: none;
+            text-align: center;
+            padding: 20px;
+        }
+        
+        .loading.show {
+            display: block;
+        }
+        
+        .error {
+            color: #d63031;
+            text-align: center;
+            padding: 16px;
+            display: none;
+        }
+        
+        .error.show {
+            display: block;
+        }
+    </style>
+</head>
+<body>
+    <div class="header">
+        <h1>💰 PaySwap Wallet</h1>
+        <p>Сканируйте QR-код для оплаты в USDT</p>
+    </div>
+    
+    <!-- Курсы валют -->
+    <div class="prices-card">
+        <h3 style="margin-bottom: 8px;">📊 Курсы Rapira</h3>
+        <div id="pricesContainer">
+            <div class="loading show" id="pricesLoading">Загрузка курсов...</div>
+        </div>
+    </div>
+    
+    <!-- Кнопка сканирования -->
+    <button class="button" id="scanBtn">
+        📸 СКАНИРОВАТЬ QR-КОД
+    </button>
+    
+    <!-- Результат -->
+    <div class="result-card" id="resultCard">
+        <h3 style="text-align: center;">✅ ГОТОВО</h3>
+        <div class="rub-amount" id="rubAmount">0 ₽</div>
+        <div class="usdt-amount" id="usdtAmount">0 USDT</div>
+        <div class="details" id="details"></div>
+        <button class="button" id="newScanBtn" style="margin-top: 16px;">
+            🔄 НОВЫЙ ПЛАТЕЖ
+        </button>
+    </div>
+    
+    <!-- Загрузка -->
+    <div class="loading" id="loading">
+        ⏳ Обработка QR-кода...
+    </div>
+    
+    <!-- Ошибка -->
+    <div class="error" id="error"></div>
+
+    <script>
+        // Инициализация Telegram WebApp
+        let tg = window.Telegram.WebApp;
+        tg.expand(); // Растягиваем на весь экран
+        tg.ready();
+        
+        // Получаем элементы
+        const scanBtn = document.getElementById('scanBtn');
+        const newScanBtn = document.getElementById('newScanBtn');
+        const resultCard = document.getElementById('resultCard');
+        const loading = document.getElementById('loading');
+        const error = document.getElementById('error');
+        const rubAmount = document.getElementById('rubAmount');
+        const usdtAmount = document.getElementById('usdtAmount');
+        const details = document.getElementById('details');
+        const pricesContainer = document.getElementById('pricesContainer');
+        const pricesLoading = document.getElementById('pricesLoading');
+        
+        // Загружаем курсы при запуске
+        loadPrices();
+        
+        // Сканирование QR
+        scanBtn.addEventListener('click', () => {
+            tg.showScanQrPopup({
+                text: 'Наведите камеру на QR-код оплаты'
+            }, (qrData) => {
+                // Если пользователь закрыл попап без сканирования
+                if (!qrData) return;
+                
+                // Показываем загрузку
+                loading.classList.add('show');
+                resultCard.classList.remove('show');
+                
+                // Отправляем QR на сервер
+                fetch('http://127.0.0.1:8000/api/parse-qr', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json'
+                    },
+                    body: JSON.stringify({qr: qrData})
+                })
+                .then(res => res.json())
+                .then(data => {
+                    loading.classList.remove('show');
+                    
+                    if (data.success) {
+                        // Показываем результат
+                        rubAmount.textContent = `${data.rub.toFixed(2)} ₽`;
+                        usdtAmount.textContent = `${data.usdt} USDT`;
+                        
+                        details.innerHTML = `
+                            <div>📈 Курс биржи: ${data.rate} ₽/USDT</div>
+                            <div>💰 Курс списания: ${data.rate_with_markup} ₽/USDT (+5%)</div>
+                            <div style="margin-top:8px; color:#666; font-size:12px; word-break:break-all;">
+                                QR: ${data.qr}
+                            </div>
+                        `;
+                        
+                        resultCard.classList.add('show');
+                        
+                        // Отправляем данные боту
+                        tg.sendData(JSON.stringify({
+                            type: 'qr_scan',
+                            user: tg.initDataUnsafe?.user,
+                            qr: qrData,
+                            rub: data.rub,
+                            usdt: data.usdt
+                        }));
+                        
+                    } else {
+                        showError(data.error || 'Не удалось распознать сумму');
+                    }
+                })
+                .catch(err => {
+                    loading.classList.remove('show');
+                    showError('Ошибка: ' + err.message);
+                });
+                
+                return true; // Закрываем попап сканирования
+            });
+        });
+        
+        // Новая оплата
+        newScanBtn.addEventListener('click', () => {
+            resultCard.classList.remove('show');
+        });
+        
+        // Загрузка курсов
+        async function loadPrices() {
+            try {
+                const res = await fetch('http://127.0.0.1:8000/api/prices');
+                const data = await res.json();
+                
+                pricesContainer.innerHTML = '';
+                
+                data.prices.forEach(item => {
+                    const changeClass = item.change > 0 ? 'positive' : (item.change < 0 ? 'negative' : '');
+                    const changeSign = item.change > 0 ? '+' : '';
+                    
+                    const priceEl = document.createElement('div');
+                    priceEl.className = 'price-item';
+                    priceEl.innerHTML = `
+                        <span class="pair">${item.pair}</span>
+                        <span>
+                            <span class="value">${item.price}</span>
+                            <span style="margin-left:8px; color:${item.change > 0 ? '#00b894' : (item.change < 0 ? '#d63031' : '#666')}">
+                                ${changeSign}${item.change}%
+                            </span>
+                        </span>
+                    `;
+                    pricesContainer.appendChild(priceEl);
+                });
+                
+            } catch (err) {
+                pricesContainer.innerHTML = '<div style="color:#d63031">Ошибка загрузки курсов</div>';
+            }
+        }
+        
+        // Показать ошибку
+        function showError(msg) {
+            error.textContent = msg;
+            error.classList.add('show');
+            setTimeout(() => {
+                error.classList.remove('show');
+            }, 3000);
+        }
+    </script>
+</body>
+</html>
