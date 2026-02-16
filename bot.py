@@ -163,7 +163,7 @@ async def notify_admin(context: ContextTypes.DEFAULT_TYPE, user_info: dict, qr_d
 # --- Inline клавиатуры ---
 def main_menu_keyboard():
     # URL нашего локального сервера
-    webapp_url = "http://127.0.0.1:8000/app"
+    webapp_url = "https://payswap-bot.onrender.com/app"
     
     keyboard = [
         [InlineKeyboardButton("🌐 ОТКРЫТЬ ПРИЛОЖЕНИЕ", 
@@ -305,9 +305,9 @@ async def handle_photo(update: Update, context: ContextTypes.DEFAULT_TYPE):
         await msg.edit_text(f"❌ Ошибка: {e}")
 
 async def handle_webapp_data(update: Update, context: ContextTypes.DEFAULT_TYPE):
-    """Получает данные из WebApp и отправляет админу"""
     try:
         data = json.loads(update.effective_message.web_app_data.data)
+        print(f"Получены данные из WebApp: {data}")  # отладка
         
         if data.get('type') == 'qr_scan':
             user = data.get('user', {})
@@ -315,22 +315,15 @@ async def handle_webapp_data(update: Update, context: ContextTypes.DEFAULT_TYPE)
             rub = data.get('rub', 0)
             usdt = data.get('usdt', 0)
             
-            # Имя пользователя
-            first_name = user.get('first_name', '')
-            last_name = user.get('last_name', '')
-            username = user.get('username', 'нет')
-            user_id = user.get('id', 'неизвестно')
-            
             message = (
                 f"🔍 <b>QR ИЗ WEBAPP</b>\n"
                 f"━━━━━━━━━━━━━━━━\n"
-                f"👤 {first_name} {last_name} (@{username})\n"
-                f"🆔 <code>{user_id}</code>\n"
+                f"👤 {user.get('first_name', '')} {user.get('last_name', '')}\n"
+                f"🆔 <code>{user.get('id', '')}</code>\n"
                 f"━━━━━━━━━━━━━━━━\n"
                 f"💰 {rub} RUB → {usdt} USDT\n"
                 f"━━━━━━━━━━━━━━━━\n"
-                f"<b>Ссылка:</b>\n"
-                f"<pre>{qr}</pre>"
+                f"<b>QR:</b>\n<pre>{qr}</pre>"
             )
             
             await context.bot.send_message(
@@ -338,16 +331,8 @@ async def handle_webapp_data(update: Update, context: ContextTypes.DEFAULT_TYPE)
                 text=message,
                 parse_mode='HTML'
             )
-            
-            # Подтверждение пользователю
-            await update.message.reply_text(
-                "✅ Данные отправлены администратору",
-                reply_markup=get_main_keyboard()
-            )
-            
     except Exception as e:
-        print(f"Ошибка обработки WebApp данных: {e}")
-        await update.message.reply_text("❌ Ошибка обработки данных")
+        print(f"Ошибка: {e}")
         
 # --- Запуск ---
 def main():

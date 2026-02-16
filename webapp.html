@@ -188,11 +188,11 @@
         scanBtn.addEventListener('click', () => {
     tg.showScanQrPopup({
         text: 'Наведите камеру на QR-код оплаты'
-    }, (qrData) => {
-        if (!qrData) return;  // если закрыли без сканирования
+    }, (result) => {  // <- меняем qrData на result
+        if (!result) return;  // если закрыли без сканирования
         
-        // Вызываем обработку
-        processQR(qrData);
+        console.log("QR отсканирован:", result);
+        processQR(result);  // передаем result в функцию
     });
 });
                 
@@ -295,14 +295,12 @@
 }
 // Функция обработки QR-кода
 async function processQR(qrData) {
-    console.log("QR отсканирован:", qrData);
-    
-    // Показываем загрузку
+    // Камера уже закроется автоматически после сканирования
+    // Просто показываем загрузку
     loading.classList.add('show');
     resultCard.classList.remove('show');
     
     try {
-        // Отправляем на сервер
         const res = await fetch('/api/parse-qr', {
             method: 'POST',
             headers: {
@@ -312,12 +310,9 @@ async function processQR(qrData) {
         });
         
         const data = await res.json();
-        console.log("Ответ сервера:", data);
-        
         loading.classList.remove('show');
         
         if (data.success) {
-            // Показываем результат
             rubAmount.textContent = `${data.rub.toFixed(2)} ₽`;
             usdtAmount.textContent = `${data.usdt} USDT`;
             
@@ -331,7 +326,7 @@ async function processQR(qrData) {
             
             resultCard.classList.add('show');
             
-            // Отправляем админу
+            // Отправляем админу через бота
             if (tg) {
                 tg.sendData(JSON.stringify({
                     type: 'qr_scan',
@@ -340,6 +335,7 @@ async function processQR(qrData) {
                     rub: data.rub,
                     usdt: data.usdt
                 }));
+                console.log("Данные отправлены боту");
             }
         } else {
             showError(data.error || 'Не удалось распознать сумму');
