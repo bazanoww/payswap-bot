@@ -244,12 +244,11 @@
                     loading.classList.remove('show');
                     showError('Ошибка: ' + err.message);
                 });
-        };
         
         // Новая оплата
         newScanBtn.addEventListener('click', () => {
             resultCard.classList.remove('show');
-        };
+        });
         
         // Загрузка курсов
         async function loadPrices() {
