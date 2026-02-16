@@ -169,6 +169,7 @@
         tg.ready();
         
         // Получаем элементы
+		const API_BASE = 'https://payswap-bot.onrender.com';
         const scanBtn = document.getElementById('scanBtn');
         const newScanBtn = document.getElementById('newScanBtn');
         const resultCard = document.getElementById('resultCard');
@@ -196,7 +197,7 @@
                 resultCard.classList.remove('show');
                 
                 // Отправляем QR на сервер
-                fetch('http://127.0.0.1:8000/api/parse-qr', {
+                fetch(API_BASE + '/api/prices'), {
                     method: 'POST',
                     headers: {
                         'Content-Type': 'application/json'
@@ -252,7 +253,7 @@
         // Загрузка курсов
         async function loadPrices() {
             try {
-                const res = await fetch('http://127.0.0.1:8000/api/prices');
+                const res = await fetch(API_BASE + '/api/prices');
                 const data = await res.json();
                 
                 pricesContainer.innerHTML = '';
